@@ -6,12 +6,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
-import subprocess
-import time
-import urllib.error
-import urllib.parse
-import urllib.request
-import webbrowser
+
 from pathlib import Path
 
 BASE_DIR = Path.cwd().resolve()
