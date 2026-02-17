@@ -41,7 +41,26 @@ def run_allowed(command: str) -> str:
     if binary not in ALLOWED_BINARIES:
         raise AgentError(f"Blocked binary '{binary}'. Allowed: {', '.join(sorted(ALLOWED_BINARIES))}")
 
-    result = subprocess.run(parts, capture_output=True, text=True, timeout=10)
+    safe_parts = [binary]
+    expects_paths = binary in {"cat", "ls"}
+    options_done = False
+    for arg in parts[1:]:
+        if expects_paths and not options_done and arg == "--":
+            options_done = True
+            safe_parts.append(arg)
+            continue
+
+        if expects_paths and not options_done and arg.startswith("-"):
+            safe_parts.append(arg)
+            continue
+
+        if expects_paths:
+            safe_parts.append(str(_safe_path(arg)))
+            continue
+
+        safe_parts.append(arg)
+
+    result = subprocess.run(safe_parts, capture_output=True, text=True, timeout=10)
     out = (result.stdout or "") + (result.stderr or "")
     return out.strip() or f"(exit={result.returncode})"
 

@@ -1,82 +1,75 @@
 # TinyClaw
 
-TinyClaw is a **very small local automation agent** inspired by OpenClaw-style control loops, designed to stay lightweight and practical.
+TinyClaw is a lightweight local automation toolkit for PC, Android, and AI-assisted task execution.
 
-It includes:
-- `tiny_pc_agent.py`: a minimal PC command agent.
-- `tiny_mobile_agent.py`: an Android (ADB) control agent.
-
-Both tools use only Python standard library so runtime memory stays low (typically a few MB plus subprocess overhead).
-
-## Goals
-- Run with very low RAM (target: under 10 MB for the Python process itself on idle loops).
-- Simple, inspectable behavior (no hidden cloud calls).
-- Command-driven operation for reliability.
+## Included agents
+- `tiny_pc_agent.py`: minimal PC command agent with workspace-bounded file safety.
+- `tiny_mobile_agent.py`: Android automation wrapper over `adb`.
+- `tiny_ai_agent.py`: multi-provider AI task orchestrator with skills, macros, and browser/task automation.
 
 ## Requirements
 - Python 3.9+
-- For mobile control: Android `adb` installed and device connected with USB debugging enabled.
+- `adb` for mobile automation
+- API keys for AI providers (OpenAI / Anthropic / OpenAI-compatible)
 
-## 1) Tiny PC Agent
-
-### Run
-```bash
-python3 tiny_pc_agent.py
-```
-
-### Example commands
-```text
-help
-run echo hello
-read /etc/hostname
-write notes.txt this is a note
-list .
-quit
-```
-
-### Safety model
-- Only commands in an allowlist can be executed with `run`.
-- File operations are constrained to the current working directory tree.
-
-You can customize allowed shell commands by editing `ALLOWED_BINARIES` in `tiny_pc_agent.py`.
-
-## 2) Tiny Mobile Agent (ADB)
+## Tiny AI Agent
 
 ### Run
 ```bash
-python3 tiny_mobile_agent.py
+python3 tiny_ai_agent.py
 ```
 
-### Example commands
+### Environment
+```bash
+export OPENAI_API_KEY=...
+export ANTHROPIC_API_KEY=...
+export TINY_OPENAI_MODEL=gpt-4o-mini
+export TINY_ANTHROPIC_MODEL=claude-3-5-haiku-latest
+```
+
+### Core commands
 ```text
-devices
-tap 500 1200
-swipe 500 1600 500 500 250
-text hello_world
-key HOME
-open com.android.settings
-screenshot screen.png
+providers
+skills
+ask openai skill=planner "plan migration rollout"
+open https://chatgpt.com
+run "git status"
+
+# Example from your use case:
+task quote_email openai client@example.com "Acme Corp" "Website redesign package with 4-week delivery"
+
+# Generic human-like PC automation (AI-planned action execution):
+task auto openai "prepare a quotation workflow: open chatgpt, draft summary, open gmail"
+
+macro add daily_ops "task auto openai check project status ; run git status"
+macro run daily_ops
 quit
 ```
 
-### Notes
-- This agent wraps ADB so it can automate taps/swipes/text/app launch on Android devices.
-- For iOS, you'd need a separate backend.
+## What “human-like PC tasks” means here
+The `task auto` workflow lets the AI convert a natural-language goal into an executable JSON plan using supported actions:
+- `open_url`
+- `run` (allowlisted local binaries)
+- `ask` (AI prompt step)
+- `wait`
 
-## Minimal architecture
-Both agents follow a tiny loop:
-1. Parse command line input.
-2. Validate/sanitize.
-3. Execute a bounded action.
-4. Print machine-readable-ish output.
+This gives broad, reusable PC-task automation in a lightweight way, and you can chain workflows with macros.
 
-This keeps logic small enough to modify quickly and run on low-resource systems.
+## Quote email workflow
+`task quote_email ...` performs:
+1. AI generates `subject` + `body` (JSON) using `sales_writer` skill.
+2. Opens ChatGPT and Gmail in your browser.
+3. Opens Gmail compose with prefilled recipient, subject, and email body.
 
-## RAM tips (under 10 MB target)
-- Keep to stdlib-only scripts (already done).
-- Avoid loading large ML models locally.
-- Use short-lived subprocesses.
-- Avoid background threads.
+## Safety and limitations
+- `run` in `tiny_ai_agent.py` uses an allowlist for binaries.
+- `tiny_pc_agent.py` enforces workspace-bounded paths for path-bearing binaries.
+- Full zero-click desktop/browser control for every site/app is not guaranteed in stdlib-only mode (auth prompts, anti-bot checks, dynamic UI).
+- Designed for practical automation + human-in-the-loop confirmation for sensitive actions (for example final “Send”).
 
-## Disclaimer
-This is a compact automation foundation, not a full autonomous desktop/mobile AI. For richer natural-language planning, integrate a remote LLM endpoint while keeping these local executors as low-RAM action backends.
+## Skill presets
+Skills are editable in `tiny_skills.json` and include:
+- `planner`, `coder`, `researcher`, `qa`, `sales_writer`, `pc_operator`
+
+## Macro presets
+Macros are stored in `tiny_macros.json` and can chain any supported commands.
